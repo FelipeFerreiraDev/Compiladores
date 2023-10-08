@@ -43,6 +43,9 @@ pub struct  Binary {
 pub enum BinaryOp {
     Add,
     Sub,
+    Mul,
+    Div,
+    Rem,
 }
 
 #[derive(Debug, Deserialize)]
@@ -84,13 +87,36 @@ fn eval(term: Term) -> Val {
                     match (lhs, rhs) {
                         (Val::Int(a), Val::Int(b)) => Val::Int(a + b),
                         _ => panic!("Invalid value"),
-                    }
-                },
+                    }},
                 BinaryOp::Sub => {
                     let lhs = eval(*bin.lhs);
                     let rhs = eval(*bin.rhs);
                     match (lhs, rhs) {
                         (Val::Int(a), Val::Int(b)) => Val::Int(a - b),
+                        _ => panic!("Invalid value"),
+                    }
+                }
+                BinaryOp::Mul => {
+                    let lhs = eval(*bin.lhs);
+                    let rhs = eval(*bin.rhs);
+                    match (lhs, rhs) {
+                        (Val::Int(a), Val::Int(b)) => Val::Int(a * b),
+                        _ => panic!("Invalid value"),
+                    }
+                }
+                BinaryOp::Div => {
+                    let lhs = eval(*bin.lhs);
+                    let rhs = eval(*bin.rhs);
+                    match (lhs, rhs) {
+                        (Val::Int(a), Val::Int(b)) => Val::Int(a / b),
+                        _ => panic!("Invalid value"),
+                    }
+                }
+                BinaryOp::Rem => {
+                    let lhs = eval(*bin.lhs);
+                    let rhs = eval(*bin.rhs);
+                    match (lhs, rhs) {
+                        (Val::Int(a), Val::Int(b)) => Val::Int(a % b),
                         _ => panic!("Invalid value"),
                     }
                 }
