@@ -33,11 +33,25 @@ pub struct  Str {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct  Binary {
+    rhs: Box<Term>,
+    lhs: Box<Term>,
+    op: BinaryOp,
+}
+
+#[derive(Debug, Deserialize)]
+pub enum BinaryOp {
+    Add,
+    Sub,
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Term {
     Int(Int),
     Str(Str),
     Print(Print),
+    Binary(Binary),
 }
 
 #[derive(Debug)]
@@ -61,7 +75,27 @@ fn eval(term: Term) -> Val {
                 _ => panic!("Invalid value"),
             };
             Val::Void
-        }
+        },
+        Term::Binary(bin) => {
+            match bin.op {
+                BinaryOp::Add => {
+                    let lhs = eval(*bin.lhs);
+                    let rhs = eval(*bin.rhs);
+                    match (lhs, rhs) {
+                        (Val::Int(a), Val::Int(b)) => Val::Int(a + b),
+                        _ => panic!("Invalid value"),
+                    }
+                },
+                BinaryOp::Sub => {
+                    let lhs = eval(*bin.lhs);
+                    let rhs = eval(*bin.rhs);
+                    match (lhs, rhs) {
+                        (Val::Int(a), Val::Int(b)) => Val::Int(a - b),
+                        _ => panic!("Invalid value"),
+                    }
+                }
+            }
+        },
     }
 }
 
