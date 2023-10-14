@@ -17,50 +17,55 @@ pub struct File {
     location: Location,
 } 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Print {
     value: Box<Term>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct  Int {
     value: i32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct  Bool {
     value: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct  Str {
     value: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct  Binary {
     rhs: Box<Term>,
     lhs: Box<Term>,
     op: BinaryOp,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct  If {
     condition: Box<Term>,
     then: Box<Term>,
     otherwise: Box<Term>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub enum BinaryOp {
     Add,
     Sub,
     Mul,
     Div,
     Rem,
+    Lt,
+    Gt,
+    Lte,
+    Gte,
+    Eq,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "kind")]
 pub enum Term {
     Bool(Bool),
@@ -71,6 +76,8 @@ pub enum Term {
     If(If),
     Let(Let),
     Var(Var),
+    Function(Function),
+    Call(Call),
 }
 
 #[derive(Debug, Clone)]
@@ -79,23 +86,40 @@ pub enum Val {
     Int(i32),
     Bool(bool),
     Str(String),
+    Closure {
+        body: Term,
+        params: Vec<Parameter>,
+        env: Scope,
+    },
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Parameter {
     text: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct  Let {
     name: Parameter,
     value: Box<Term>,
     next: Box<Term>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct  Var {
     text: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct  Function {
+    parameters: Vec<Parameter>,
+    value: Box<Term>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct  Call {
+    callee: Box<Term>,
+    arguments: Vec<Term>,
 }
 
 pub type Scope = HashMap<String, Val>;
@@ -117,6 +141,29 @@ fn eval(term: Term, scope: &mut Scope) -> Val {
         },
         Term::Binary(bin) => {
             match bin.op {
+                BinaryOp::Gt => {
+                    let lhs = eval(*bin.lhs, scope);
+                    let rhs = eval(*bin.rhs, scope);
+                    match (lhs, rhs) {
+                        (Val::Int(a), Val::Int(b)) => Val::Bool(a > b),
+                        _ => panic!("Invalid value"),
+                    }},
+                BinaryOp::Eq => {
+                    let lhs = eval(*bin.lhs, scope);
+                    let rhs = eval(*bin.rhs, scope);
+                    match (lhs, rhs) {
+                        (Val::Int(a), Val::Int(b)) => Val::Bool(a == b),
+                        (Val::Bool(a), Val::Bool(b)) => Val::Bool(a == b),
+                        (Val::Str(a), Val::Str(b)) => Val::Bool(a == b),
+                        _ => panic!("Invalid value"),
+                    }},
+                BinaryOp::Lt => {
+                    let lhs = eval(*bin.lhs, scope);
+                    let rhs = eval(*bin.rhs, scope);
+                    match (lhs, rhs) {
+                        (Val::Int(a), Val::Int(b)) => Val::Bool(a < b),
+                        _ => panic!("Invalid value"),
+                    }},
                 BinaryOp::Add => {
                     let lhs = eval(*bin.lhs, scope);
                     let rhs = eval(*bin.rhs, scope);
@@ -159,6 +206,22 @@ fn eval(term: Term, scope: &mut Scope) -> Val {
                         _ => panic!("Invalid value"),
                     }
                 }
+                BinaryOp::Lte => {
+                    let lhs = eval(*bin.lhs, scope);
+                    let rhs = eval(*bin.rhs, scope);
+                    match (lhs, rhs) {
+                        (Val::Int(a), Val::Int(b)) => Val::Bool(a <= b),
+                        _ => panic!("Invalid value"),
+                    }
+                }
+                BinaryOp::Gte => {
+                    let lhs = eval(*bin.lhs, scope);
+                    let rhs = eval(*bin.rhs, scope);
+                    match (lhs, rhs) {
+                        (Val::Int(a), Val::Int(b)) => Val::Bool(a >= b),
+                        _ => panic!("Invalid value"),
+                    }
+                }
             }
         },
         Term::If(i) => {
@@ -180,6 +243,23 @@ fn eval(term: Term, scope: &mut Scope) -> Val {
             match scope.get(&v.text) {
                 Some(val) => val.clone(),
                 None => panic!("Invalid value"),
+            }
+        }
+        Term::Function(f) => Val::Closure { 
+            body: *f.value, 
+            params: f.parameters, 
+            env: scope.clone()
+        },
+        Term::Call(call) => {
+            match eval(*call.callee, scope) {
+                Val::Closure { body, params,  env} => {
+                    let mut new_scope = scope.clone();
+                    for (param, arg) in params.into_iter().zip(call.arguments) {
+                        new_scope.insert(param.text, eval(arg, scope));
+                    }
+                    eval(body, &mut new_scope)
+                },
+                _ => panic!("Invalid value"),
             }
         }
     }
