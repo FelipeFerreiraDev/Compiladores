@@ -28,6 +28,11 @@ pub struct  Int {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct  Bool {
+    value: bool,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct  Str {
     value: String,
 }
@@ -37,6 +42,13 @@ pub struct  Binary {
     rhs: Box<Term>,
     lhs: Box<Term>,
     op: BinaryOp,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct  If {
+    condition: Box<Term>,
+    then: Box<Term>,
+    otherwise: Box<Term>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -51,10 +63,12 @@ pub enum BinaryOp {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Term {
+    Bool(Bool),
     Int(Int),
     Str(Str),
     Print(Print),
     Binary(Binary),
+    If(If),
 }
 
 #[derive(Debug)]
@@ -67,6 +81,7 @@ pub enum Val {
 
 fn eval(term: Term) -> Val {
     match term {
+        Term::Bool(bool) => Val::Bool(bool.value),
         Term::Int(number) => Val::Int(number.value),
         Term::Str(str) => Val::Str(str.value),
         Term::Print(print) => {
@@ -125,6 +140,13 @@ fn eval(term: Term) -> Val {
                 }
             }
         },
+        Term::If(i) => {
+            match eval(*i.condition) {
+                Val::Bool(true) => eval(*i.then),
+                Val::Bool(false) => eval(*i.otherwise),
+                _ => panic!("Invalid value"),
+            }
+        }
     }
 }
 
